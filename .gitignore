@@ -1,3 +1,6 @@
+.idea
+result_dir
+
 ### CUDA template
 *.i
 *.ii

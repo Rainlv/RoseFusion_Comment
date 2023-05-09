@@ -3,7 +3,7 @@
 
 
 render_surface: 1
-PST_path: "your_pst_path/PST/"
+PST_path: "/home/i/CLionProjects/ROSEFusion/PST/"
 save_trajectory: 1
 save_scene: 1
 

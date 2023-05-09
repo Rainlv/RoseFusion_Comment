@@ -1,0 +1,12 @@
+%YAML:1.0
+name: example
+seq_path: /home/i/data/datasets/example.seq
+result_path: result_dir/
+voxel_size: 20
+truncated_size: 60
+voxel_x: 712
+voxel_y: 512
+voxel_z: 812
+init_x: 0
+init_y: 0
+init_z: 2100

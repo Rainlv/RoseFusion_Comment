@@ -190,16 +190,17 @@ namespace rosefusion {
             std::vector<cv::Mat> q_trans;
             int num=20;
 
-  
+            // 初始化粒子，从PST中读取
             QuaternionData(std::vector<int> particle_level, std::string PST_path):
             q(60),q_trans(60)
             {
 
-                
+                // 第一层 0-20，粒子数10240
                 for (int i=0;i<num;i++){
-                    q_trans[i]=cv::Mat(particle_level[0],6,CV_32FC1);
+                    q_trans[i]=cv::Mat(particle_level[0],6,CV_32FC1);  // row表示粒子数，col表示6个参数，即6D位姿
                     q[i]=cv::cuda::createContinuous(particle_level[0], 6, CV_32FC1);
 
+                    // 初始化的粒子来自于PST(采样模板)，第一行设为全0
                     q_trans[i]=cv::imread(PST_path+"pst_10240_"+std::to_string(i)+".tiff",cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
                     q_trans[i].ptr<float>(0)[0]=0;
                     q_trans[i].ptr<float>(0)[1]=0;
@@ -211,6 +212,7 @@ namespace rosefusion {
 
                 }
 
+                // 第二层 20-40，粒子数3072
                 for (int i=num;i<num*2;i++){
                     q_trans[i]=cv::Mat(particle_level[1],6,CV_32FC1);
                     q[i]=cv::cuda::createContinuous(particle_level[1], 6, CV_32FC1);
@@ -226,6 +228,7 @@ namespace rosefusion {
 
                 }
 
+                // 第三层 40-60，粒子数1024
                 for (int i=num*2;i<num*3;i++){
                     q_trans[i]=cv::Mat(particle_level[2],6,CV_32FC1);
                     q[i]=cv::cuda::createContinuous(particle_level[2], 6, CV_32FC1);
@@ -238,11 +241,7 @@ namespace rosefusion {
                     q_trans[i].ptr<float>(0)[4]=0;
                     q_trans[i].ptr<float>(0)[5]=0;
                     q[i].upload(q_trans[i]);
-
                 }
-
-
-
             }
 
         };

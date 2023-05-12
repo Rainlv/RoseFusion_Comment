@@ -1,3 +1,14 @@
+# RoseFusion_Comment
+> RoseFusion算法注释
+
+源仓库：https://github.com/jzhzhang/ROSEFusion
+
+RoseFusion算法整体改自KinectFusion，只有**位姿估计**部分较之有较大改动，故仅注释**位姿估计**相关部分，如有纰漏，欢迎指正！
+- 另：KinectFusion的详细注释请[参考](https://github.com/DreamWaterFound/KinectFusionAppLib_comments)@[Guoqing Liu](https://github.com/DreamWaterFound)
+
+
+---
+
 # ROSEFusion :rose:
 
 This project is based on our SIGGRAPH 2021 paper, [ROSEFusion: **R**andom **O**ptimization for Online Den**SE** Reconstruction under Fast Camera Motion

@@ -69,7 +69,7 @@ namespace rosefusion {
                              const std::vector<int> particle_level,                 // 粒子等级：[10240, 3072, 1024]
                              float *iter_tsdf,
                              bool *previous_frame_success,                          // 上一帧是否成功
-                             Matf61da &initialize_search_size                       // 初始的搜索范围（PST的六个轴）
+                             Matf61da &initialize_search_size                       // 初始的搜索范围
         ) {
             // step 0 数据准备
             // Get initial rotation and translation
@@ -86,7 +86,7 @@ namespace rosefusion {
             Matf61da previous_search_size;  // 上一帧的搜索范围
 
 
-            Matf61da search_size;  // 搜索范围，即论文中PST的六个轴, r,初始化时6轴长度相同
+            Matf61da search_size;  // 搜索范围，即论文中PST的r
 
             // 这里的搜索范围是每帧开始时，还未进行迭代的搜索范围，即搜索范围初值
             // 如果上一帧成功了,且配置项`scaling_inherit_directly`为true，则继承上一帧的搜索范围
@@ -151,7 +151,7 @@ namespace rosefusion {
                         cam_params,                                                     // 相机参数
                         particle_index[count_particle],                     // 粒子索引
                         particle_level[particle_index[count_particle] / 20],  // 迭代时10240，3072，1024循环，表示粒子数量
-                        search_size,                                                    // PST的轴长
+                        search_size,                                                    // PST的r
                         level[count_particle],                              // 32,16,8循环
                         level_index,                                                    //
                         mean_transform,                                             //

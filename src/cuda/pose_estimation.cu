@@ -15,25 +15,25 @@ namespace rosefusion {
         namespace cuda {
 
             __global__
-            void particle_kernel(const PtrStepSz<short> tsdf_volume,
-                                 const PtrStep<float3> vertex_map_current,
-                                 const PtrStep<float3> normal_map_current,
-                                 PtrStep<int> search_value,
-                                 PtrStep<int> search_count,
-                                 const Eigen::Matrix<float, 3, 3, Eigen::DontAlign> rotation_current,
-                                 const Matf31fa translation_current,
-                                 const Eigen::Matrix<float, 3, 3, Eigen::DontAlign> rotation_previous_inv,
-                                 const Matf31fa translation_previous,
-                                 const PtrStep<float> quaternion_trans,
-                                 const CameraParameters cam_params,
-                                 const int3 volume_size,
-                                 const float voxel_scale,
-                                 const int particle_size,
-                                 const int cols,
-                                 const int rows,
-                                 const Matf61da search_size,
-                                 const int level,
-                                 const int level_index
+            void particle_kernel(const PtrStepSz<short> tsdf_volume,                                        // tsdf体素块
+                                 const PtrStep<float3> vertex_map_current,                                  // 当前帧的顶点图
+                                 const PtrStep<float3> normal_map_current,                                  // 当前帧的法向图
+                                 PtrStep<int> search_value,                                                 // 搜索范围的值
+                                 PtrStep<int> search_count,                                                 // 搜索范围的计数
+                                 const Eigen::Matrix<float, 3, 3, Eigen::DontAlign> rotation_current,       // 当前帧的旋转矩阵
+                                 const Matf31fa translation_current,                                        // 当前帧的平移向量
+                                 const Eigen::Matrix<float, 3, 3, Eigen::DontAlign> rotation_previous_inv,  // 上一帧的旋转矩阵的逆
+                                 const Matf31fa translation_previous,                                       // 上一帧的平移向量
+                                 const PtrStep<float> quaternion_trans,                                     // 6D预采样位姿
+                                 const CameraParameters cam_params,                                         // 相机内参
+                                 const int3 volume_size,                                                    // 体素块的尺寸
+                                 const float voxel_scale,                                                   // 体素块的分辨率
+                                 const int particle_size,                                                   // 粒子的数量
+                                 const int cols,                                                            // 图像的宽度
+                                 const int rows,                                                            // 图像的高度
+                                 const Matf61da search_size,                                                // 6D位姿搜索范围
+                                 const int level,                                                           // 金字塔的层数 32,16,8循环
+                                 const int level_index                                                      //
                                  ) {
                 const int p = blockIdx.x * blockDim.x + threadIdx.x;
                 const int x = (blockIdx.y * blockDim.y + threadIdx.y) * level + level_index;
@@ -59,7 +59,7 @@ namespace rosefusion {
                 // ？不加平移量
                 Matf31fa vertex_current_global = rotation_current * vertex_current;
 
-
+                // TODO 大概是坐标转换，没看懂
                 const float t_x = quaternion_trans.ptr(p)[0] * search_size(0, 0) * 1000;
                 const float t_y = quaternion_trans.ptr(p)[1] * search_size(1, 0) * 1000;
                 const float t_z = quaternion_trans.ptr(p)[2] * search_size(2, 0) * 1000;
@@ -139,7 +139,7 @@ namespace rosefusion {
                                 const CameraParameters &cam_params,             // 相机参数
                                 const int particle_index,                       // 粒子索引 [0, 1+20, 2+40...]
                                 const int particle_size,                        // 迭代时10240，3072，1024循环，表示粒子数量
-                                const Matf61da &search_size,                    // PST的轴长
+                                const Matf61da &search_size,                    // 6D位姿的搜索范围
                                 const int level,                                // 32,16,8循环
                                 const int level_index,                          //
                                 Eigen::Matrix<double, 7, 1> &mean_transform,    //
@@ -150,15 +150,17 @@ namespace rosefusion {
                 const int cols = vertex_map_current.cols;
                 const int rows = vertex_map_current.rows;
 
-                dim3 block(BLOCK_SIZE_X * BLOCK_SIZE_Y, 1, 1);
+                dim3 block(BLOCK_SIZE_X * BLOCK_SIZE_Y, 1, 1);   // 1024, 1, 1
                 dim3 grid(1, 1, 1);
-                grid.x = static_cast<unsigned int>(std::ceil((float) particle_size / block.y / block.x));
+                grid.x = static_cast<unsigned int>(std::ceil((float) particle_size / block.y / block.x));  // 值域为 10 | 3 | 1
                 grid.y = static_cast<unsigned int>(std::ceil((float) cols / level));
                 grid.z = static_cast<unsigned int>(std::ceil((float) rows / level));
 
-
+                // 初始化为全0
                 search_data.gpu_search_count[particle_index / 20].setTo(0);
                 search_data.gpu_search_value[particle_index / 20].setTo(0);
+
+                // 更新`search_data`的`gpu_search_value`和`gpu_search_count`
                 particle_kernel<<<grid, block>>>(volume.tsdf_volume,
                                                  vertex_map_current,
                                                  normal_map_current,
@@ -186,7 +188,7 @@ namespace rosefusion {
 
                 cudaDeviceSynchronize();
 
-
+                // TODO 归一化tsdf `orgin_tsdf`是？
                 double orgin_tsdf =
                         (double) search_data_value.ptr<int>(0)[0] / (double) search_data_count.ptr<int>(0)[0];
                 int orgin_count = search_data_count.ptr<int>(0)[0];
@@ -285,6 +287,7 @@ namespace rosefusion {
                 double qz = mean_transform(6, 0) * search_size(5, 0);
                 double lens = 1 / sqrt(qw * qw + qx * qx + qy * qy + qz * qz);
 
+                // 单位化
                 mean_transform(3, 0) = qw * lens;
                 mean_transform(4, 0) = qx * lens;
                 mean_transform(5, 0) = qy * lens;

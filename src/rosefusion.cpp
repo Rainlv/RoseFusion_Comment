@@ -42,7 +42,7 @@ namespace rosefusion {
                     particle_leve,          // 粒子等级：[10240, 3072, 1024]
                     &iter_tsdf,
                     &previous_frame_success,            // 上一帧是否成功
-                    initialize_search_size          // 初始的搜索范围（PST的六个轴）
+                    initialize_search_size          // 初始6D位姿的搜索范围
                     );
 
         }

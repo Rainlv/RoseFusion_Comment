@@ -200,7 +200,7 @@ namespace rosefusion {
                     q_trans[i]=cv::Mat(particle_level[0],6,CV_32FC1);  // row表示粒子数，col表示6个参数，即6D位姿
                     q[i]=cv::cuda::createContinuous(particle_level[0], 6, CV_32FC1);
 
-                    // 初始化的粒子来自于PST(采样模板)，第一行设为全0
+                    // 初始化的粒子来自于PST(采样模板)，第一行设为全0，1，2为平移，3，4，5为旋转四元数的虚部
                     q_trans[i]=cv::imread(PST_path+"pst_10240_"+std::to_string(i)+".tiff",cv::IMREAD_ANYCOLOR | cv::IMREAD_ANYDEPTH);
                     q_trans[i].ptr<float>(0)[0]=0;
                     q_trans[i].ptr<float>(0)[1]=0;

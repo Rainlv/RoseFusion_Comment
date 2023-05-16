@@ -29,9 +29,9 @@ namespace rosefusion {
         }
 
 
-        void update_seach_size(const float tsdf, const float scaling_coefficient, Matf61da &search_size,
-                               Eigen::Matrix<double, 7, 1> &mean_transform) {
-
+        void update_search_size(const float tsdf, const float scaling_coefficient, Matf61da &search_size,
+                                Eigen::Matrix<double, 7, 1> &mean_transform) {
+            // 加上1e-3可能是为了防止分母为0
             double s_tx = fabs(mean_transform(0, 0)) + 1e-3;
             double s_ty = fabs(mean_transform(1, 0)) + 1e-3;
             double s_tz = fabs(mean_transform(2, 0)) + 1e-3;
@@ -40,8 +40,8 @@ namespace rosefusion {
             double s_qy = fabs(mean_transform(5, 0)) + 1e-3;
             double s_qz = fabs(mean_transform(6, 0)) + 1e-3;
 
+            // 计算模长，用于归一化
             double trans_norm = sqrt(s_tx * s_tx + s_ty * s_ty + s_tz * s_tz + s_qx * s_qx + s_qy * s_qy + s_qz * s_qz);
-
 
             double normal_tx = s_tx / trans_norm;
             double normal_ty = s_ty / trans_norm;
@@ -50,6 +50,7 @@ namespace rosefusion {
             double normal_qy = s_qy / trans_norm;
             double normal_qz = s_qz / trans_norm;
 
+            // 这里的1e-3 参考论文Eq.17，用于防止PST退化
             search_size(3, 0) = scaling_coefficient * tsdf * normal_qx + 1e-3;
             search_size(4, 0) = scaling_coefficient * tsdf * normal_qy + 1e-3;
             search_size(5, 0) = scaling_coefficient * tsdf * normal_qz + 1e-3;
@@ -82,7 +83,7 @@ namespace rosefusion {
             Eigen::Vector3d previous_global_translation = pose.block(0, 3, 3, 1);
 
 
-            float beta = controller_config.momentum;
+            float beta = controller_config.momentum;  // 上一帧`search_size`的权重，论文取0.1
             Matf61da previous_search_size;  // 上一帧的搜索范围
 
 
@@ -114,14 +115,14 @@ namespace rosefusion {
 
 
             int count_particle = 0;
-            int level_index = 5;
+            int level_index = 5;  // level_index是下采样步长范围内的一个值，随机取增加泛化程度
             bool success = true;
             bool previous_success = true;
 
             int count = 0;  // 迭代次数
             int count_success = 0;  // 迭代成功数（可以修改为bool，下面只是判断是否为0，成功一次就算成功，）
             float min_tsdf;
-
+            // 旋转四元数的虚部
             double qx;
             double qy;
             double qz;
@@ -131,34 +132,35 @@ namespace rosefusion {
                 // 存储位姿的变换矩阵，初始化为全0
                 Eigen::Matrix<double, 7, 1> mean_transform = Eigen::Matrix<double, 7, 1>::Zero();
                 // 到达最大迭代次数 退出
+                // ？只有这一种退出条件，论文中还有其他的退出条件，但是实现没看到
                 if (count == controller_config.max_iteration) {
                     break;
                 }
-
+                // 上一次迭代失败，这里不是又重复执行了吗？
                 if (!success) {
                     count_particle = 0;
                 }
+                // 执行一次粒子估计
                 success = cuda::particle_evaluation(
                         volume,                                                         // 体素网格
                         quaternions,                                            // 预采样粒子集合
-                        search_data,                                                    //
+                        search_data,                                                    // 搜索数据，存储粒子的tsdf累积误差和搜索顶点数
                         current_global_rotation,                            // 旋转矩阵3*3
                         current_global_translation,                         // 平移3*1
                         frame_data.vertex_map,                              // 顶点图
                         frame_data.normal_map,                              // 法向图
-                        previous_global_rotation_inverse,                   //
-                        previous_global_translation,                        //
-                        cam_params,                                                     // 相机参数
+                        previous_global_rotation_inverse,                   // 上一帧的旋转
+                        previous_global_translation,                        // 上一帧的平移
+                        cam_params,                                                     // 相机参数，投影到图像平面用
                         particle_index[count_particle],                     // 粒子索引
                         particle_level[particle_index[count_particle] / 20],  // 迭代时10240，3072，1024循环，表示粒子数量
-                        search_size,                                                    // PST的r
-                        level[count_particle],                              // 32,16,8循环
-                        level_index,                                                    //
-                        mean_transform,                                             //
-                        &min_tsdf                                                   //
+                        search_size,                                                    // PST的r，其实就是PST六个参数的缩放系数，通过优化这个缩放系数来逼近最优位姿
+                        level[count_particle],                              // 深度图下采样倍数：32,16,8循环
+                        level_index,                                                    // 下采样步长范围内的一个值，随机取增加泛化程度
+                        mean_transform,                                             // 位姿变换矩阵
+                        &min_tsdf                                                   //  归一化后的tsdf差值
                 );
-
-                // 第一次迭代失败, 更新`iter_tsdf`
+                // 粒子估计失败，使用上次的最优位姿下的tsdf差
                 if (count == 0 && !success) {
                     *iter_tsdf = min_tsdf;
                 }
@@ -174,27 +176,30 @@ namespace rosefusion {
 
                     }
                     ++count_success;  // 成功次数自增
-
+                    // 平移增量t_12
                     auto camera_translation_incremental = mean_transform.head<3>();
-                    double qw = mean_transform(3, 0);
-                    Eigen::Matrix3d camera_rotation_incremental;
 
+                    double qw = mean_transform(3, 0);
+                    // 旋转增量R_12
+                    Eigen::Matrix3d camera_rotation_incremental;
                     camera_rotation_incremental << 1 - 2 * (qy * qy + qz * qz), 2 * (qx * qy - qz * qw), 2 * (qx * qz +
                                                                                                               qy * qw),
                             2 * (qx * qy + qz * qw), 1 - 2 * (qx * qx + qz * qz), 2 * (qy * qz - qx * qw),
                             2 * (qx * qz - qy * qw), 2 * (qy * qz + qx * qw), 1 - 2 * (qx * qx + qy * qy);
 
+                    // 迭代位姿
                     current_global_translation = current_global_translation + camera_translation_incremental * 1000;
                     current_global_rotation = camera_rotation_incremental * current_global_rotation;
 
                 }
 
-
+                // 下采样的时候随机取采样步长范围内的点
                 level_index += 5;
                 level_index = level_index % level[count_particle];
 
-                update_seach_size(min_tsdf, controller_config.scaling_coefficient2, search_size, mean_transform);
-
+                // 论文中的PST update
+                update_search_size(min_tsdf, controller_config.scaling_coefficient2, search_size, mean_transform);
+                // 连续两次迭代成功，加权前后两次的搜索尺度，更新搜索尺度，论文Eq.18
                 if (previous_success && success) {
                     search_size(0, 0) = beta * search_size(0, 0) + (1 - beta) * previous_search_size(0, 0);
                     search_size(1, 0) = beta * search_size(1, 0) + (1 - beta) * previous_search_size(1, 0);
@@ -202,17 +207,15 @@ namespace rosefusion {
                     search_size(3, 0) = beta * search_size(3, 0) + (1 - beta) * previous_search_size(3, 0);
                     search_size(4, 0) = beta * search_size(4, 0) + (1 - beta) * previous_search_size(4, 0);
                     search_size(5, 0) = beta * search_size(5, 0) + (1 - beta) * previous_search_size(5, 0);
-
                     previous_search_size << search_size(0, 0), search_size(1, 0), search_size(2, 0),
                             search_size(3, 0), search_size(4, 0), search_size(5, 0);
 
                 } else if (success) {
-
+                    // 上帧没成功，则直接使用本次的搜索尺度
                     previous_search_size << search_size(0, 0), search_size(1, 0), search_size(2, 0),
                             search_size(3, 0), search_size(4, 0), search_size(5, 0);
-
                 }
-
+                // 上一次迭代是否成功
                 if (success) {
                     previous_success = true;
                 } else {
@@ -231,7 +234,7 @@ namespace rosefusion {
                     }
                 }
                 ++count;
-            }
+            }  // 迭代结束
 
             // 迭代到达最大次数，没有一次粒子估计成功，标志为位姿估计失败
             if (count_success == 0) {

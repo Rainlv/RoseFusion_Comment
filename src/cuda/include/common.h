@@ -13,7 +13,7 @@ using blockIdx = struct { int x; int y; int z; };
 
 #include <data_types.h>
 
-#define DIVSHORTMAX 0.0000305185f
+#define DIVSHORTMAX 0.0000305185f  // 1/32767
 #define SHORTMAX 32767 
 
 

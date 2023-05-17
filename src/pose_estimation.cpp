@@ -83,10 +83,8 @@ namespace rosefusion {
             Eigen::Vector3d previous_global_translation = pose.block(0, 3, 3, 1);
 
 
-            float beta = controller_config.momentum;  // 上一帧`search_size`的权重，论文取0.1
-            Matf61da previous_search_size;  // 上一帧的搜索范围
-
-
+            float beta = controller_config.momentum;  // 上一次迭代`search_size`在与本次迭代`search_size`加权时的权重，论文取0.1
+            Matf61da previous_search_size;  // 上一次迭代的搜索范围
             Matf61da search_size;  // 搜索范围，即论文中PST的r
 
             // 这里的搜索范围是每帧开始时，还未进行迭代的搜索范围，即搜索范围初值
@@ -116,8 +114,8 @@ namespace rosefusion {
 
             int count_particle = 0;
             int level_index = 5;  // level_index是下采样步长范围内的一个值，随机取增加泛化程度
-            bool success = true;
-            bool previous_success = true;
+            bool success = true;  // 本次迭代是否成功
+            bool previous_success = true;  // 上一次迭代是否成功
 
             int count = 0;  // 迭代次数
             int count_success = 0;  // 迭代成功数（可以修改为bool，下面只是判断是否为0，成功一次就算成功，）
@@ -158,7 +156,7 @@ namespace rosefusion {
                         level[count_particle],                              // 深度图下采样倍数：32,16,8循环
                         level_index,                                                    // 下采样步长范围内的一个值，随机取增加泛化程度
                         mean_transform,                                             // 位姿变换矩阵
-                        &min_tsdf                                                   //  归一化后的tsdf差值
+                        &min_tsdf                                                   // 归一化后的tsdf平均差值
                 );
                 // 粒子估计失败，使用上次的最优位姿下的tsdf差
                 if (count == 0 && !success) {

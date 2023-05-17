@@ -37,7 +37,7 @@ namespace rosefusion {
                                  const Matf61da search_size,                                                // 6D位姿搜索范围
                                  const int level,                                                           // 金字塔的层数 32,16,8循环
                                  const int level_index                                                      //
-                                 ) {
+            ) {
                 // 不考虑grid，会有重复？
                 const int p = blockIdx.x * blockDim.x + threadIdx.x; // 粒子索引
                 const int x = (blockIdx.y * blockDim.y + threadIdx.y) * level + level_index;  // 图像列坐标
@@ -59,8 +59,7 @@ namespace rosefusion {
                 vertex_current.y() = vertex_map_current.ptr(y)[x].y;
                 vertex_current.z() = vertex_map_current.ptr(y)[x].z;
 
-                // 将当前帧的顶点坐标转换到世界坐标系下 Pw = Rwc * Pc + twc，初始是上一次迭代结束的位置
-                // ？不加平移量
+                // 将当前帧的顶点坐标转换到世界坐标系下 Pw = Rwc * Pc + twc，平移在下面，初始是上一次迭代结束的位置
                 Matf31fa vertex_current_global = rotation_current * vertex_current;
 
                 // 通过`search_size`的拉伸得到采样的粒子实际的位姿
@@ -83,7 +82,7 @@ namespace rosefusion {
                             q1 * vertex_current_global.z();
                 float q_z = -q2 * vertex_current_global.x() + q1 * vertex_current_global.y() +
                             q0 * vertex_current_global.z();
-                // vertex_current_global为采样位姿变换后的全局坐标
+                // vertex_current_global为采样点经过位姿变换后顶点的全局坐标
                 vertex_current_global.x() =
                         q_x * q0 + q_w * (-q1) - q_z * (-q2) + q_y * (-q3) + t_x + translation_current.x();
                 vertex_current_global.y() =
@@ -91,11 +90,11 @@ namespace rosefusion {
                 vertex_current_global.z() =
                         q_z * q0 - q_y * (-q1) + q_x * (-q2) + q_w * (-q3) + t_z + translation_current.z();
 
-                // 相机坐标系下的点
+                // 上一帧中相机坐标系下顶点的坐标
                 const Matf31fa vertex_current_camera =
                         rotation_previous_inv * (vertex_current_global - translation_previous);
 
-                // 接着将该空间点投影到上一帧的图像中坐标系中
+                // 接着将该空间点投影到上一帧的图像坐标系中，+0.5f是为了四舍五入
                 Eigen::Vector2i point;
                 point.x() = __float2int_rd(
                         vertex_current_camera.x() * cam_params.focal_x / vertex_current_camera.z() +
@@ -104,12 +103,12 @@ namespace rosefusion {
                         vertex_current_camera.y() * cam_params.focal_y / vertex_current_camera.z() +
                         cam_params.principal_y + 0.5f);
 
-                // 检查投影点是否在图像中
+                // 检查投影点是否在图像中，即重叠区域
                 if (point.x() >= 0 && point.y() >= 0 && point.x() < cols && point.y() < rows &&
                     vertex_current_camera.z() >= 0) {
 
                     Vec3fda grid = (vertex_current_global) / voxel_scale;
-
+                    // 检查点在体素范围内
                     if (grid.x() < 1 || grid.x() >= volume_size.x - 1 || grid.y() < 1 ||
                         grid.y() >= volume_size.y - 1 ||
                         grid.z() < 1 || grid.z() >= volume_size.z - 1) {
@@ -121,7 +120,7 @@ namespace rosefusion {
                             __float2int_rd(grid(2)) * volume_size.y + __float2int_rd(grid(1)))[__float2int_rd(
                             grid(0))]);
 
-                    // 累加同一个粒子对应Voxel的TSDF值
+                    // 累加同一个粒子两帧重叠区域的TSDF值，对应Eq.20括号内的分子和分母
                     atomicAdd_system(search_value + p, abs(tsdf));
                     atomicAdd_system(search_count + p, 1);
 
@@ -152,7 +151,7 @@ namespace rosefusion {
                                 const int level_index,                          //
                                 Eigen::Matrix<double, 7, 1> &mean_transform,    //
                                 float *min_tsdf                                 //
-                                ) {
+            ) {
                 std::cout.precision(17);
 
                 const int cols = vertex_map_current.cols;
@@ -160,7 +159,8 @@ namespace rosefusion {
 
                 dim3 block(BLOCK_SIZE_X * BLOCK_SIZE_Y, 1, 1);   // 1024, 1, 1
                 dim3 grid(1, 1, 1);
-                grid.x = static_cast<unsigned int>(std::ceil((float) particle_size / block.y / block.x));  // 值域为 10 | 3 | 1
+                grid.x = static_cast<unsigned int>(std::ceil(
+                        (float) particle_size / block.y / block.x));  // 值域为 10 | 3 | 1
                 grid.y = static_cast<unsigned int>(std::ceil((float) cols / level));  // 下采样完的图像宽度
                 grid.z = static_cast<unsigned int>(std::ceil((float) rows / level));  // 下采样完的图像高度
 
@@ -188,7 +188,7 @@ namespace rosefusion {
                                                  search_size,
                                                  level,
                                                  level_index
-                                                 );
+                );
                 // 对应层的`search_data`, 单行矩阵
                 cv::Mat search_data_count = search_data.search_count[particle_index / 20];
                 cv::Mat search_data_value = search_data.search_value[particle_index / 20];
@@ -221,10 +221,10 @@ namespace rosefusion {
                     // 索引永远为0，因为是单行矩阵
                     double tsdf_value =
                             (double) search_data_value.ptr<int>(i)[0] / (double) search_data_count.ptr<int>(i)[0];
-                    // tsdf误差值小于静止模型，且观测次数大于静止模型的一半，即为论文中APS的条件
+                    // tsdf累计值小于静止模型，且观测次数大于静止模型的一半，即为论文中APS的条件
                     // 是不是能综合法向提升APS可靠性？
                     if (tsdf_value < orgin_tsdf && ((search_data_count.ptr<int>(i)[0]) > (orgin_count / 2.0))) {
-
+                        // 获取PST中粒子的位姿
                         const double tx = (double) quaterinons.q_trans[particle_index].ptr<float>(i)[0];
                         const double ty = (double) quaterinons.q_trans[particle_index].ptr<float>(i)[1];
                         const double tz = (double) quaterinons.q_trans[particle_index].ptr<float>(i)[2];
@@ -234,6 +234,7 @@ namespace rosefusion {
                         // *权重计算方式
                         const double weight = orgin_tsdf - tsdf_value;
 
+                        // 加权和，下面会求平均
                         sum_t_x += tx * weight;
                         sum_t_y += ty * weight;
                         sum_t_z += tz * weight;
@@ -303,7 +304,7 @@ namespace rosefusion {
                 mean_transform(5, 0) = qy * lens;
                 mean_transform(6, 0) = qz * lens;
 
-                // 相当于除以32767，归一化？
+                // 相当于除以32767，tsdf保存的时候乘了32767，来节约空间，这里要除回去，获得真实的tsdf值
                 *min_tsdf = mean_tsdf * DIVSHORTMAX;
 
                 return true;

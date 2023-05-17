@@ -32,9 +32,9 @@ namespace rosefusion {
         bool tracking_success{true};
         if (frame_id > 0) {
             tracking_success = internal::pose_estimation(
-                    volume,
+                    volume,                     // 体素网格
                     PST,                    // 预采样的粒子集，6D位姿列表，索引0-20：10240 *6，20-40：3072 *6，40-60：1024 *6
-                    search_data,
+                    search_data,                // 粒子的搜索数据，在粒子估计中使用
                     current_pose,                   // 输入: 上一帧的相机位姿; 输出: 当前帧得到的相机位姿
                     frame_data,                     // 当前帧的彩色图/深度图/顶点图/法向图数据
                     camera_parameters,      // 相机内参
@@ -43,7 +43,7 @@ namespace rosefusion {
                     &iter_tsdf,
                     &previous_frame_success,            // 上一帧是否成功
                     initialize_search_size          // 初始6D位姿的搜索范围
-                    );
+            );
 
         }
         if (!tracking_success)

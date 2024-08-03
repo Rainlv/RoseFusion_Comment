@@ -247,7 +247,6 @@ namespace rosefusion {
                         qy = qy * (double) search_size(4, 0);
                         qz = qz * (double) search_size(5, 0);
 
-                        // 模长固定为1，为啥？
                         const double qw = sqrt(1 - qx * qx - qy * qy - qz * qz);
 
                         sum_q_w += qw * weight;
@@ -258,7 +257,7 @@ namespace rosefusion {
                         ++count_search;
 
                     }
-                    // 有效迭代200次
+                    // 有效迭代200次，即APS最多为200（多了应该更准，但是慢），可以抽出为参数
                     if (count_search == 200) {
                         break;
                     }

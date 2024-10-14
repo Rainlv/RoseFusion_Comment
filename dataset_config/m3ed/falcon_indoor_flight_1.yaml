@@ -1,0 +1,16 @@
+%YAML:1.0
+
+
+name: "falcon_indoor_flight_1_rgb"
+result_path: "/home/i/CLionProjects/ROSEFusion/result_dir/"
+seq_path: "/home/i/data/datasets/RoseFutsion_seq/seq_dir/falcon_indoor_flight_1_rgb.seq"
+
+voxel_size: 10
+truncated_size: 30
+voxel_x: 512
+voxel_y: 512
+voxel_z: 512
+
+init_x: 0
+init_y: 0
+init_z: 0

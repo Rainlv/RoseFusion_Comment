@@ -1,0 +1,11 @@
+%YAML:1.0
+
+seq_name: "falcon_indoor_flight_1_rgb"
+association_file: /home/i/data/datasets/events_datasets/M3ED/datas/falcon_indoor_flight_1/synchronized_frames/ev_depth/associations_rgb.txt
+output_path: /home/i/data/datasets/RoseFutsion_seq/seq_dir/
+source_path: /home/i/data/datasets/events_datasets/M3ED/datas/falcon_indoor_flight_1/synchronized_frames/ev_depth/
+
+img_height: 720
+img_width: 1280
+depth_ratio: 1000
+color_to_depth: 1

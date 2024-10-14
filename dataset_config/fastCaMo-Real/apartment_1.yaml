@@ -1,8 +1,8 @@
 %YAML:1.0
 ---
 name: apartment_1
-seq_path: "/media/jiazhao/Jiazhao_BACKUP/FastCaMo-real/FastCaMo-real-seq/apartment_1.seq"
-result_path: /media/jiazhao/Jiazhao_BACKUP/FastCaMo-real/FastCaMo-real-result/
+seq_path: "/home/i/data/datasets/RoseFutsion_seq/seq_dir/apartment_1_real.seq"
+result_path: "/home/i/CLionProjects/ROSEFusion/result_dir/"
 voxel_size: 20.
 truncated_size: 60.
 voxel_x: 712.

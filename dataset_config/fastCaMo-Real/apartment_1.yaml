@@ -1,7 +1,7 @@
 %YAML:1.0
 ---
 name: apartment_1
-seq_path: "/home/i/data/datasets/RoseFutsion_seq/seq_dir/apartment_1_real.seq"
+seq_path: "/home/i/data/datasets/RoseFusion_seq/seq_dir/apartment_1_real.seq"
 result_path: "/home/i/CLionProjects/ROSEFusion/result_dir/"
 voxel_size: 20.
 truncated_size: 60.

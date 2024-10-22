@@ -26,8 +26,8 @@ int main(int argc,char* argv[]){
     const rosefusion::ControllerConfiguration controller_config(controller_file);
 
     pangolin::View color_cam;
-    pangolin::View shaded_cam; 
-    pangolin::View depth_cam; 
+    pangolin::View shaded_cam;
+    pangolin::View depth_cam;
 
     pangolin::GlTexture imageTexture;
     pangolin::GlTexture shadTexture;
@@ -52,7 +52,6 @@ int main(int argc,char* argv[]){
             .AddDisplay(depth_cam);
 
 
-    
         imageTexture=pangolin::GlTexture(camera_config.image_width,camera_config.image_height,GL_RGB,false,0,GL_RGB,GL_UNSIGNED_BYTE);
         shadTexture=pangolin::GlTexture(camera_config.image_width,camera_config.image_height,GL_RGB,false,0,GL_RGB,GL_UNSIGNED_BYTE);
         depthTexture=pangolin::GlTexture(camera_config.image_width,camera_config.image_height,GL_LUMINANCE,false,0,GL_LUMINANCE,GL_UNSIGNED_BYTE);
@@ -63,9 +62,9 @@ int main(int argc,char* argv[]){
 
     clock_t time_stt=clock( );
     cv::Mat color_img;
-    cv::Mat depth_map;  
+    cv::Mat depth_map;
     int n_imgs=0;
-    
+
     std::cout<<"Read seq file: "<<data_config.seq_file<<"\n";
 
     DataReader d_reader(data_config.seq_file,false);

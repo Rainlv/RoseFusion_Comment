@@ -1,0 +1,11 @@
+%YAML:1.0
+
+seq_name: "mvsec_f1"
+association_file: /home/i/data/datasets/events_datasets/MVSEC/flying1/extract/associations_rgb.txt
+output_path: /home/i/data/datasets/RoseFusion_seq/seq_dir/
+source_path: /home/i/data/datasets/events_datasets/MVSEC/flying1/extract/undistorted/
+
+img_width: 346
+img_height: 260
+depth_ratio: 1000
+color_to_depth: 1

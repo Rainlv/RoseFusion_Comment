@@ -1,0 +1,15 @@
+%YAML:1.0
+
+name: "f1"
+result_path: "/home/i/CLionProjects/ROSEFusion/result_dir/"
+seq_path: "/home/i/data/datasets/RoseFusion_seq/seq_dir/mvsec_f1.seq"
+
+voxel_size: 10
+truncated_size: 30
+voxel_x: 512
+voxel_y: 512
+voxel_z: 512
+
+init_x: 0
+init_y: 0
+init_z: 0
